@@ -1,0 +1,92 @@
+
+```html
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OPEO Hub Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg1:#1a1029;--bg2:#2b1145;--acc1:#7a33eb;--acc2:#f100ff;--danger:#ef4444;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Poppins,system-ui;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:#eee;min-height:100vh}
+.container{max-width:900px;margin:40px auto;padding:16px}
+h1{font-size:24px;font-weight:600;margin-bottom:20px}
+.card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:18px}
+.row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:10px;align-items:center}
+input{padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.25);color:#fff}
+.btn{padding:10px 14px;border:none;border-radius:10px;font-weight:600;cursor:pointer;background:linear-gradient(90deg,var(--acc1),var(--acc2));color:#fff}
+.btn:hover{filter:brightness(1.08)}
+.del{background:var(--danger)}
+.del:hover{filter:brightness(1.1)}
+.footer{opacity:.6;margin-top:16px;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>OPEO Hub Dashboard</h1>
+
+  <div class="card">
+    <button id="add" class="btn" style="margin-bottom:12px;">+ Adicionar blog</button>
+    <div id="list"></div>
+    <button id="save" class="btn" style="margin-top:14px;">💾 Salvar no GitHub</button>
+    <div class="footer">Atualiza automaticamente o arquivo <code>links.json</code> na rede OPEO</div>
+  </div>
+</div>
+
+<script>
+const FN_GET  = "/.netlify/functions/get-links";
+const FN_SAVE = "/.netlify/functions/update-links";
+const list = document.getElementById("list");
+
+function template(item={}, idx=0){
+  return `
+  <div class="row" data-idx="${idx}">
+    <input placeholder="Nome" value="${item.nome||''}">
+    <input placeholder="URL (https://...)" value="${item.url||''}">
+    <button class="btn del">Excluir</button>
+  </div>`;
+}
+
+async function load(){
+  const res = await fetch(FN_GET);
+  const data = await res.json();
+  list.innerHTML = data.map((x,i)=>template(x,i)).join('');
+}
+
+document.getElementById("add").onclick = ()=>{
+  list.insertAdjacentHTML("beforeend", template({}, Date.now()));
+};
+
+list.onclick = e=>{
+  if(e.target.classList.contains("del")) e.target.parentElement.remove();
+};
+
+document.getElementById("save").onclick = async ()=>{
+  const rows = [...document.querySelectorAll(".row")];
+  const payload = rows.map(r=>{
+    const [n,u] = r.querySelectorAll("input");
+    return { nome:n.value.trim(), url:u.value.trim() };
+  }).filter(x=>x.nome && x.url);
+
+  const res = await fetch(FN_SAVE, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ links: payload })
+  });
+
+  const out = await res.json();
+  alert(out.ok ? "✅ Atualizado no GitHub!" : "❌ Erro ao salvar");
+};
+
+load();
+</script>
+
+</body>
+</html>
